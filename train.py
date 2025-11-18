@@ -19,7 +19,7 @@ from sklearn.metrics import classification_report, accuracy_score
 from model import build_default_model
 
 # Standard (fixed) settings — no CLI args
-DATA_PATH = 'datasets/vectorized_news_skip-gram_embeddings.csv'
+DATA_PATH = 'datasets/vectorized_news_skip_gram_embeddings.csv'
 EPOCHS = 10
 BATCH_SIZE = 64
 LEARNING_RATE = 1e-3
