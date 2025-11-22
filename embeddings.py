@@ -23,11 +23,17 @@ def create_vectorized_dataset(news_df, impact_csv='datasets/historical_prices_im
 
     The output CSV will have columns: date, symbol, news_vector (JSON), impact_score.
     """
+    missing_impact = False
     if not os.path.exists(impact_csv):
-        raise FileNotFoundError(f"Impact CSV not found: {impact_csv}")
-
-    df_news = news_df.copy()
-    df_impact = pd.read_csv(impact_csv)
+        # Don't fail if the impact CSV is missing; continue and write output with empty impact_score.
+        print(f"Warning: Impact CSV not found: {impact_csv} — proceeding and writing output with empty impact_score")
+        missing_impact = True
+        df_news = news_df.copy()
+        # create an empty impact DataFrame with the expected columns so downstream code still runs
+        df_impact = pd.DataFrame(columns=['date', 'symbol', 'impact_score'])
+    else:
+        df_news = news_df.copy()
+        df_impact = pd.read_csv(impact_csv)
 
     # normalize names
     df_news.columns = [c.strip() for c in df_news.columns]
@@ -63,11 +69,17 @@ def create_vectorized_dataset(news_df, impact_csv='datasets/historical_prices_im
         right_on=['date_only', 'symbol'],
         how='left',
     )
-    # Remove rows without impact_score (these are news rows that did not match any impact record)
-    missing = merged['impact_score'].isna().sum()
-    if missing > 0:
-        print(f'Warning: {missing} rows have no matching impact_score and will be dropped from the output CSV')
-    merged = merged.dropna(subset=['impact_score'])
+
+    # If the impact CSV existed, drop rows without an impact_score (they didn't match any record).
+    # If the impact CSV was missing, keep all rows and leave impact_score as NaN so the vector CSV is usable.
+    if not missing_impact:
+        missing = merged['impact_score'].isna().sum()
+        if missing > 0:
+            print(f'Warning: {missing} rows have no matching impact_score and will be dropped from the output CSV')
+        merged = merged.dropna(subset=['impact_score'])
+    else:
+        if 'impact_score' not in merged.columns:
+            merged['impact_score'] = np.nan
 
     out_df = pd.DataFrame()
     out_df['date'] = merged['date'].dt.strftime('%Y-%m-%d')
