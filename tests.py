@@ -68,4 +68,4 @@ def test_vectorized_news_cbow_embeddings():
 if __name__ == "__main__":
     test_aggregated_news_schema_validation()
     test_vectorized_news_skipgram_embeddings()
-    #test_vectorized_news_cbow_embeddings()
+    test_vectorized_news_cbow_embeddings()
