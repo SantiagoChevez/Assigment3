@@ -164,83 +164,82 @@ def skip_gram_embeddings():
     # create dataset using the df we already loaded and the trained model
     create_vectorized_dataset(df, impact_csv='datasets/historical_prices_impact.csv', model=w2v_model, out_csv='datasets/vectorized_news_skip_gram_embeddings.csv')
 
+def cbow_embeddings():
+    """Train CBOW Word2Vec, build TF-IDF weighted document vectors and save CBOW outputs.
+
+    Outputs (in repo root / datasets):
+    - word2vec_cbow.model
+    - word2vec_cbow.kv
+    - doc_vectors_cbow.npy
+    - datasets/vectorized_news_cbow_embeddings.csv
+    """
+    # --- Load data ---
+    df = pd.read_csv('datasets/aggregated_news.csv')
+
+    # determine text column (reuse same logic as skip_gram)
+    if 'news' in df.columns:
+        text_col = 'news'
+    else:
+        object_cols = [c for c in df.columns if df[c].dtype == object]
+        if not object_cols:
+            raise ValueError('No text-like column found in CSV. Please set `text_col` manually.')
+        text_col = object_cols[0]
+
+    vector_size = 100
+    window = 5
+    min_count = 2
+    workers = 4
+    epochs = 5
+    seed = 42
+
+    df['tokens'] = df[text_col].fillna('').astype(str).apply(preprocess)
+
+    tokenized_docs = [tokens for tokens in df['tokens'] if len(tokens) > 0]
+
+    # Train CBOW Word2Vec (sg=0)
+    w2v_model = gensim.models.Word2Vec(
+        sentences=tokenized_docs,
+        vector_size=vector_size,
+        window=window,
+        min_count=min_count,
+        workers=workers,
+        sg=0,  # use CBOW
+        seed=seed,
+    )
+    w2v_model.train(tokenized_docs, total_examples=len(tokenized_docs), epochs=epochs)
+
+    # Save model and vectors (CBOW-specific filenames)
+    w2v_model.save('word2vec_cbow.model')
+    w2v_model.wv.save_word2vec_format('word2vec_cbow.kv', binary=False)
+
+    # --- Build TF-IDF weighted document vectors ---
+    print('Building TF-IDF vectorizer on raw texts for CBOW...')
+    texts = df[text_col].fillna('').astype(str).tolist()
+    tfidf = TfidfVectorizer(min_df=2)
+    tfidf.fit(texts)
+    idf_dict = dict(zip(tfidf.get_feature_names_out(), tfidf.idf_))
+
+    def tfidf_weighted_vector(tokens, model, vector_size, idf_dict):
+        vecs = []
+        weights = []
+        for t in tokens:
+            if t in model.wv:
+                w = idf_dict.get(t, 1.0)
+                vecs.append(model.wv[t] * w)
+                weights.append(w)
+        if len(vecs) == 0:
+            return np.zeros(vector_size)
+        return np.sum(vecs, axis=0) / (np.sum(weights) + 1e-9)
+
+    X = np.array([tfidf_weighted_vector(tokens, w2v_model, vector_size, idf_dict) for tokens in df['tokens']])
+    print('CBOW feature matrix shape:', X.shape)
+    np.save('doc_vectors_cbow.npy', X)
+    print("Saved CBOW document vectors to 'doc_vectors_cbow.npy'")
+
+    # Attach vectors and create dataset CSV
+    df['news_vector'] = list(X)
+    create_vectorized_dataset(df, impact_csv='datasets/historical_prices_impact.csv', model=w2v_model, out_csv='datasets/vectorized_news_cbow_embeddings.csv')
+
 if __name__ == '__main__':
     # skip_gram_embeddings()
-
-    def cbow_embeddings():
-        """Train CBOW Word2Vec, build TF-IDF weighted document vectors and save CBOW outputs.
-
-        Outputs (in repo root / datasets):
-        - word2vec_cbow.model
-        - word2vec_cbow.kv
-        - doc_vectors_cbow.npy
-        - datasets/vectorized_news_cbow_embeddings.csv
-        """
-        # --- Load data ---
-        df = pd.read_csv('datasets/aggregated_news.csv')
-
-        # determine text column (reuse same logic as skip_gram)
-        if 'news' in df.columns:
-            text_col = 'news'
-        else:
-            object_cols = [c for c in df.columns if df[c].dtype == object]
-            if not object_cols:
-                raise ValueError('No text-like column found in CSV. Please set `text_col` manually.')
-            text_col = object_cols[0]
-
-        vector_size = 100
-        window = 5
-        min_count = 2
-        workers = 4
-        epochs = 5
-        seed = 42
-
-        df['tokens'] = df[text_col].fillna('').astype(str).apply(preprocess)
-
-        tokenized_docs = [tokens for tokens in df['tokens'] if len(tokens) > 0]
-
-        # Train CBOW Word2Vec (sg=0)
-        w2v_model = gensim.models.Word2Vec(
-            sentences=tokenized_docs,
-            vector_size=vector_size,
-            window=window,
-            min_count=min_count,
-            workers=workers,
-            sg=0,  # use CBOW
-            seed=seed,
-        )
-        w2v_model.train(tokenized_docs, total_examples=len(tokenized_docs), epochs=epochs)
-
-        # Save model and vectors (CBOW-specific filenames)
-        w2v_model.save('word2vec_cbow.model')
-        w2v_model.wv.save_word2vec_format('word2vec_cbow.kv', binary=False)
-
-        # --- Build TF-IDF weighted document vectors ---
-        print('Building TF-IDF vectorizer on raw texts for CBOW...')
-        texts = df[text_col].fillna('').astype(str).tolist()
-        tfidf = TfidfVectorizer(min_df=2)
-        tfidf.fit(texts)
-        idf_dict = dict(zip(tfidf.get_feature_names_out(), tfidf.idf_))
-
-        def tfidf_weighted_vector(tokens, model, vector_size, idf_dict):
-            vecs = []
-            weights = []
-            for t in tokens:
-                if t in model.wv:
-                    w = idf_dict.get(t, 1.0)
-                    vecs.append(model.wv[t] * w)
-                    weights.append(w)
-            if len(vecs) == 0:
-                return np.zeros(vector_size)
-            return np.sum(vecs, axis=0) / (np.sum(weights) + 1e-9)
-
-        X = np.array([tfidf_weighted_vector(tokens, w2v_model, vector_size, idf_dict) for tokens in df['tokens']])
-        print('CBOW feature matrix shape:', X.shape)
-        np.save('doc_vectors_cbow.npy', X)
-        print("Saved CBOW document vectors to 'doc_vectors_cbow.npy'")
-
-        # Attach vectors and create dataset CSV
-        df['news_vector'] = list(X)
-        create_vectorized_dataset(df, impact_csv='datasets/historical_prices_impact.csv', model=w2v_model, out_csv='datasets/vectorized_news_cbow_embeddings.csv')
-
     cbow_embeddings()
