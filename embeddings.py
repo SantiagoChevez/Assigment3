@@ -18,7 +18,7 @@ def vectorize(tokens, model, vector_size):
         return np.zeros(vector_size)
     return np.mean(vectors, axis=0)
 
-def create_vectorized_dataset(news_df, impact_csv='datasets/historical_prices_impact.csv', model=None, out_csv='datasets/vectorized_news_skip_gram_embeddings.csv'):
+def create_vectorized_dataset(news_df, impact_csv='datasets/historical_prices_impact.csv', model=None, out_csv='datasets/vectorized_news_skipgram_embeddings.csv'):
     """Merge `news_df` (must contain `date`, `symbol` and `news`/text column) with `impact_csv` and save dataset.
 
     The output CSV will have columns: date, symbol, news_vector (JSON), impact_score.
@@ -162,7 +162,7 @@ def skip_gram_embeddings():
     df['news_vector'] = list(X)
 
     # create dataset using the df we already loaded and the trained model
-    create_vectorized_dataset(df, impact_csv='datasets/historical_prices_impact.csv', model=w2v_model, out_csv='datasets/vectorized_news_skip_gram_embeddings.csv')
+    create_vectorized_dataset(df, impact_csv='datasets/historical_prices_impact.csv', model=w2v_model, out_csv='datasets/vectorized_news_skipgram_embeddings.csv')
 
 def cbow_embeddings():
     """Train CBOW Word2Vec, build TF-IDF weighted document vectors and save CBOW outputs.

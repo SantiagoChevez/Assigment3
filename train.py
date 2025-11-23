@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # Standard (fixed) settings — no CLI args
 BATCH_SIZE = 64
-DATA_PATH = 'datasets/vectorized_news_skip_gram_embeddings.csv'
+DATA_PATH = 'datasets/vectorized_news_skipgram_embeddings.csv'
 CBOW_DATA_PATH = 'datasets/vectorized_news_cbow_embeddings.csv'
 EPOCHS = 10
 BATCH_SIZE = 64

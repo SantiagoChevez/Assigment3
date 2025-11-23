@@ -31,7 +31,7 @@ def test_aggregated_news_schema_validation():
 
 
 def test_vectorized_news_skipgram_embeddings():
-    filename = "vectorized_news_skip_gram_embeddings.csv"
+    filename = "vectorized_news_skipgram_embeddings.csv"
     filepath = os.path.join(DATASET_DIR, filename)
     print(f"Validating {filepath} against schema: vectorized_news_skipgram_schema")
 
